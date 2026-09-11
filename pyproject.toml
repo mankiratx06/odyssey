@@ -1,0 +1,41 @@
+[project]
+name = "odyssey-ai"
+version = "0.1.0"
+description = "Open-source, bring-your-own-keys AI agent for the terminal, desktop and web"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "AGPL-3.0-or-later" }
+keywords = ["ai", "agent", "llm", "cli", "mcp", "byok"]
+dependencies = [
+    "litellm>=1.55",
+    "mcp>=1.2",
+    "rich>=13.7",
+    "prompt_toolkit>=3.0",
+    "pyyaml>=6.0",
+    "keyring>=25.0",
+]
+
+[project.optional-dependencies]
+server = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "pydantic>=2.6"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.5"]
+
+[project.scripts]
+odyssey = "odyssey.__main__:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["odyssey*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

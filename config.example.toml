@@ -1,0 +1,29 @@
+# Copy to ~/.config/odyssey/config.toml and edit. Everything is optional.
+
+# Filesystem tools are confined to this directory.
+workspace = "."
+
+[models]
+# LiteLLM model strings: "provider/model".
+chat  = "anthropic/claude-sonnet-5"
+code  = "anthropic/claude-opus-5"
+cheap = "anthropic/claude-haiku-4-5-20251001"
+free  = "openrouter/openrouter/free"   # OpenRouter's free-model router
+
+# Other providers work with no code change:
+#   openai/gpt-5.6
+#   gemini/gemini-3.1-pro
+#   groq/llama-3.3-70b-versatile
+#   ollama/qwen3-coder            (local, no key needed)
+
+[limits]
+max_steps = 25      # tool rounds before the loop gives up
+max_tokens = 8192
+
+[skills]
+paths = ["~/.config/odyssey/skills", "./.odyssey/skills"]
+
+# Every future capability is a server here — nothing in the core changes.
+# [mcp.servers.filesystem]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "/some/path"]
