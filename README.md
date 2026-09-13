@@ -130,6 +130,17 @@ Drop it in `~/.config/odyssey/skills/` or `./.odyssey/skills/`. Only names and
 descriptions go into the system prompt; the body loads on demand, so a hundred
 skills cost you almost no context.
 
+The agent can also write them. `write_skill` asks first, like any other write,
+and takes a `scope`: `user` for know-how that travels with you, `project` for
+the repo you're in. Since a skill is just Markdown in a directory, anything it
+records you can read, edit, delete, or commit.
+
+> Tell it "remember how to do that" after you've worked something out together.
+> The point is that the next session starts knowing it.
+
+Skills persist on disk and often end up in a repo, so nothing secret belongs in
+one.
+
 ## Security
 
 `run_shell`, `write_file` and `edit_file` ask before running. Workspace
@@ -151,7 +162,7 @@ ruff check .
 
 ## Roadmap
 
-- [ ] `write_skill` — the agent records what it learns
+- [x] `write_skill` — the agent records what it learns
 - [ ] persistent sessions and conversation search
 - [ ] context compaction when history outgrows the window
 - [ ] desktop shell over the HTTP backend

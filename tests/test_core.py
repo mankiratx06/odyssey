@@ -213,7 +213,7 @@ def test_skill_library_progressive_disclosure(tmp_path):
     assert "deploy: Ship to staging." in catalogue
     assert "Run tests" not in catalogue  # body stays out of the system prompt
 
-    body = library.tool().handler(name="deploy")
+    body = skill_tool(library, "load_skill").handler(name="deploy")
     assert "Run tests, then push." in body
 
 
@@ -224,3 +224,100 @@ def test_quota_exceeded_is_raised():
     asyncio.run(budget.reserve("m", 10))
     with pytest.raises(QuotaExceeded):
         asyncio.run(budget.reserve("m", 10))
+
+
+def skill_tool(library, name):
+    return next(t for t in library.tools() if t.name == name)
+
+
+@pytest.fixture
+def library(tmp_path):
+    user = tmp_path / "user"
+    project = tmp_path / "project"
+    user.mkdir()
+    project.mkdir()
+    return SkillLibrary([user, project])
+
+
+def test_written_skill_is_readable_by_a_later_session(library, tmp_path):
+    skill_tool(library, "write_skill").handler(
+        name="run-tests",
+        description="How this repo runs its tests.",
+        body="Use `pytest -q` from the root.",
+    )
+
+    # A fresh library over the same paths: proves it reached disk, not just memory.
+    reloaded = SkillLibrary([tmp_path / "user", tmp_path / "project"])
+    assert "run-tests: How this repo runs its tests." in reloaded.catalogue()
+    assert "pytest -q" in skill_tool(reloaded, "load_skill").handler(name="run-tests")
+
+
+def test_scope_chooses_which_path_is_written(library, tmp_path):
+    write = skill_tool(library, "write_skill").handler
+    write(name="travels-with-me", description="d", body="b")
+    write(name="this-repo-only", description="d", body="b", scope="project")
+
+    assert (tmp_path / "user" / "travels-with-me" / "SKILL.md").exists()
+    assert (tmp_path / "project" / "this-repo-only" / "SKILL.md").exists()
+
+
+def test_skill_names_cannot_escape_their_directory(library, tmp_path):
+    for bad in ["../escape", "/absolute", "has space", "Upper", ""]:
+        with pytest.raises(ValueError, match="invalid skill name"):
+            library.write(bad, "d", "b")
+    assert not (tmp_path / "escape").exists()
+
+
+def test_existing_skill_is_not_clobbered_silently(library):
+    library.write("thing", "first", "one")
+    with pytest.raises(ValueError, match="already exists"):
+        library.write("thing", "second", "two")
+
+    library.write("thing", "second", "two", overwrite=True)
+    assert library.skills["thing"].body == "two"
+
+
+def test_overwrite_replaces_in_place_rather_than_shadowing(library, tmp_path):
+    library.write("thing", "d", "original", scope="project")
+    library.write("thing", "d", "revised", scope="user", overwrite=True)
+
+    # Written to the project path it already lived at, so one copy exists, not two.
+    assert not (tmp_path / "user" / "thing").exists()
+    assert SkillLibrary([tmp_path / "user", tmp_path / "project"]).skills["thing"].body == "revised"
+
+
+def test_awkward_description_survives_the_round_trip(library, tmp_path):
+    # A colon would break hand-rolled frontmatter; a newline would break the
+    # one-line-per-skill catalogue.
+    library.write("tricky", "Deploy: staging,\nthen prod", "body")
+
+    reloaded = SkillLibrary([tmp_path / "user"])
+    assert reloaded.skills["tricky"].description == "Deploy: staging, then prod"
+    assert len(reloaded.catalogue().splitlines()) == 2  # header + one skill
+
+
+@pytest.mark.asyncio
+async def test_bad_skill_name_is_a_message_not_a_crash(library):
+    registry = ToolRegistry()
+    registry.extend(library.tools())
+    result = await registry.call(
+        "write_skill",
+        {"name": "../evil", "description": "d", "body": "b"},
+        approve=lambda tool, arguments: _true(),
+    )
+    assert "invalid skill name" in result
+
+
+@pytest.mark.asyncio
+async def test_writing_a_skill_asks_first(library):
+    registry = ToolRegistry()
+    registry.extend(library.tools())
+
+    async def deny(tool, arguments):
+        return False
+
+    result = await registry.call(
+        "write_skill", {"name": "sneaky", "description": "d", "body": "b"}, approve=deny
+    )
+    assert "declined" in result
+    assert "sneaky" not in library.skills

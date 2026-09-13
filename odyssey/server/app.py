@@ -35,8 +35,7 @@ class SessionStore:
         registry = ToolRegistry()
         registry.extend(builtin.build(config.workspace))
         skills = SkillLibrary(config.skill_paths)
-        if skills.skills:
-            registry.register(skills.tool())
+        registry.extend(skills.tools())
 
         agent = Agent(
             config=config,

@@ -28,9 +28,10 @@ async def _chat(args: argparse.Namespace) -> int:
     registry = ToolRegistry()
     registry.extend(builtin.build(config.workspace))
 
+    # Registered even with no skills on disk: write_skill is how the first one
+    # gets there.
     skills = SkillLibrary(config.skill_paths)
-    if skills.skills:
-        registry.register(skills.tool())
+    registry.extend(skills.tools())
 
     async with MCPManager(config.mcp_servers) as mcp:
         registry.extend(await mcp.connect_all())
